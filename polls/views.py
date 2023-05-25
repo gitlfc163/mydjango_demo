@@ -1,42 +1,33 @@
 # from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 
 from django.shortcuts import render, get_object_or_404
 from .models import Question, Choice
 from django.template import loader
+from django.urls import reverse
+from django.views import generic
 
 # 问题索引页
-def index(request):
-    latest_question_list = Question.objects.order_by("-pub_date")[:5]
-    template = loader.get_template("polls/index.html")
-    # 指定上下文对象名称，这里指定的是latest_question_list，这个名称将在模板中使用
-    context = {
-        "latest_question_list": latest_question_list,
-    }
-    return render(request, "polls/index.html", context)
-    # return HttpResponse(template.render(context, request))
+class IndexView(generic.ListView):
+    template_name = "polls/index.html"
+    context_object_name = "latest_question_list"
+
+    def get_queryset(self):
+        """Return the last five published questions."""
+        return Question.objects.order_by("-pub_date")[:5]
 
 # 问题详情页-按问题描述ID查看问题详情
-def detail(request, question_id):
-    # try:
-    #     question = Question.objects.get(pk=question_id)
-    # except Question.DoesNotExist:
-    #     raise Http404("问题不存在")
-    question = get_object_or_404(Question, pk=question_id)
-    return render(request, "polls/detail.html", {"question": question})
-    # return HttpResponse("You're looking at question %s." % question_id)
+class DetailView(generic.DetailView):
+    model = Question
+    template_name = "polls/detail.html"
 
 # 问题结果页-按问题描述ID查看问题结果
-def results(request, question_id):
-    response = "You're looking at the results of question %s."
-    return HttpResponse(response % question_id)
-
-# 投票页-按问题描述ID查看问题投票页
-def vote(request, question_id):
-    return HttpResponse("You're voting on question %s." % question_id)
+class ResultsView(generic.DetailView):
+    model = Question
+    template_name = "polls/results.html"
 
 # 投票处理器-用于响应用户为某个问题的特定选项投票的操作。
-def vote2(request, question_id):
+def vote(request, question_id):
     # 根据问题id获取对应的问题对象，如果不存在则返回404错误
     question = get_object_or_404(Question, pk=question_id)
     try:
@@ -52,4 +43,4 @@ def vote2(request, question_id):
         # 如果用户选择了有效的选项，增加该选项的票数，并重定向到问题结果页
         selected_choice.votes += 1
         selected_choice.save()
-        return HttpResponseRedirect(reverse('polls:results', args=(question.id,)))
+        return HttpResponseRedirect(reverse("polls:results", args=(question.id,)))
